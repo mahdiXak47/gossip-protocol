@@ -16,8 +16,9 @@ cd "$SCRIPT_DIR"
 LOG_DIR="run_logs"
 NODE_BIN="./node"
 SETTLE_SEC=8
-PROPAGATE_SEC=15
+PROPAGATE_SEC=20
 GOSSIP_MSG="gossip demo hey i am working!!!"
+FANOUT=5
 
 if [ ! -x "$NODE_BIN" ]; then
   echo "Error: $NODE_BIN not found or not executable. Build with: go build -o node ./cmd/node"
@@ -28,21 +29,20 @@ mkdir -p "$LOG_DIR"
 
 echo "=== Starting 10 nodes (bootstrap 9000, peers 9001-9009) ==="
 
-# Bootstrap node (no -bootstrap).
-$NODE_BIN -port 9000 -seed 1 -logfile "$LOG_DIR/node_9000.log" >/dev/null 2>&1 &
+# Bootstrap node (no -bootstrap). Use -fanout so propagation reaches all nodes.
+$NODE_BIN -port 9000 -seed 1 -fanout "$FANOUT" -logfile "$LOG_DIR/node_9000.log" >/dev/null 2>&1 &
 sleep 2
 
 # Start 9002..9009 first so bootstrap has many peers before 9001 asks for PEERS_LIST.
-# (If 9001 connects first, bootstrap only knows 9001 and returns that; 9001 rejects self and gets 0 peers.)
 for port in 9002 9003 9004 9005 9006 9007 9008 9009; do
   seed=$((port - 8999))
-  $NODE_BIN -port "$port" -bootstrap 127.0.0.1:9000 -seed "$seed" -logfile "$LOG_DIR/node_${port}.log" >/dev/null 2>&1 &
+  $NODE_BIN -port "$port" -bootstrap 127.0.0.1:9000 -seed "$seed" -fanout "$FANOUT" -logfile "$LOG_DIR/node_${port}.log" >/dev/null 2>&1 &
 done
 sleep 3
 
-# Start 9001 last; it will get 9002..9009 from bootstrap. Inject GOSSIP via stdin after SETTLE_SEC.
+# Start 9001 last; inject GOSSIP via stdin after SETTLE_SEC.
 ( sleep "$SETTLE_SEC"; printf '%s\n' "$GOSSIP_MSG"; sleep "$PROPAGATE_SEC"; sleep 5 ) | \
-  $NODE_BIN -port 9001 -bootstrap 127.0.0.1:9000 -seed 2 -logfile "$LOG_DIR/node_9001.log" >/dev/null 2>&1 &
+  $NODE_BIN -port 9001 -bootstrap 127.0.0.1:9000 -seed 2 -fanout "$FANOUT" -logfile "$LOG_DIR/node_9001.log" >/dev/null 2>&1 &
 
 # Disown so shell does not print "Terminated" when we pkill the nodes.
 disown -a 2>/dev/null || true
@@ -52,7 +52,7 @@ sleep $((SETTLE_SEC + PROPAGATE_SEC + 6))
 
 echo "=== Stopping nodes ==="
 pkill -f "$NODE_BIN -port 90" 2>/dev/null || true
-sleep 2
+sleep 3
 pkill -9 -f "$NODE_BIN -port 90" 2>/dev/null || true
 sleep 1
 

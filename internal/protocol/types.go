@@ -17,17 +17,17 @@ const (
 
 // Config holds dynamic protocol parameters.
 type Config struct {
-	Fanout            int     `json:"fanout"`
-	TTL               int     `json:"ttl"`
-	PeerLimit         int     `json:"peer_limit"`
-	PingIntervalSec   float64 `json:"ping_interval_sec"`
-	PeerTimeoutSec    float64 `json:"peer_timeout_sec"`
+	Fanout          int     `json:"fanout"`
+	TTL             int     `json:"ttl"`
+	PeerLimit       int     `json:"peer_limit"`
+	PingIntervalSec float64 `json:"ping_interval_sec"`
+	PeerTimeoutSec  float64 `json:"peer_timeout_sec"`
 }
 
 // PeerEntry is one neighbor in the peer list (node_id, addr, last_seen_at).
 type PeerEntry struct {
-	NodeID     string  `json:"node_id"`
-	Addr       string  `json:"addr"`
-	LastSeenAt int64   `json:"last_seen_at"` // Unix ms.
-	PendingPings int   `json:"pending_pings,omitempty"`
+	NodeID       string `json:"node_id"`
+	Addr         string `json:"addr"`
+	LastSeenAt   int64  `json:"last_seen_at"` // Unix ms.
+	PendingPings int    `json:"pending_pings,omitempty"`
 }
