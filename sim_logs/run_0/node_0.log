@@ -1,0 +1,15 @@
+{"t_ms":1772043895218,"node":"node-9000","event":"startup","payload":{"addr":"127.0.0.1:9000","port":"9000","seed":"1"}}
+{"t_ms":1772043895219,"node":"node-9000","event":"peer_add","payload":{"addr":"127.0.0.1:9002","node_id":"node-9002"}}
+{"t_ms":1772043895219,"node":"node-9000","event":"peer_add","payload":{"addr":"127.0.0.1:9001","node_id":"node-9001"}}
+{"t_ms":1772043897220,"node":"node-9000","event":"ping_sent","payload":{"seq":"1","to":"127.0.0.1:9002"}}
+{"t_ms":1772043897220,"node":"node-9000","event":"ping_sent","payload":{"seq":"1","to":"127.0.0.1:9001"}}
+{"t_ms":1772043897220,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9002"}}
+{"t_ms":1772043897221,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9001"}}
+{"t_ms":1772043899220,"node":"node-9000","event":"ping_sent","payload":{"seq":"2","to":"127.0.0.1:9002"}}
+{"t_ms":1772043899220,"node":"node-9000","event":"ping_sent","payload":{"seq":"2","to":"127.0.0.1:9001"}}
+{"t_ms":1772043899220,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9002"}}
+{"t_ms":1772043899220,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9001"}}
+{"t_ms":1772043901219,"node":"node-9000","event":"ping_sent","payload":{"seq":"3","to":"127.0.0.1:9002"}}
+{"t_ms":1772043901219,"node":"node-9000","event":"ping_sent","payload":{"seq":"3","to":"127.0.0.1:9001"}}
+{"t_ms":1772043901219,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9002"}}
+{"t_ms":1772043901220,"node":"node-9000","event":"pong_received","payload":{"from":"127.0.0.1:9001"}}
