@@ -1,2 +1,4 @@
 node
 simulate
+/sim_logs
+/run_logs

@@ -1,61 +1,205 @@
- # Gossip protocol — structure and usage
+# Gossip Protocol — ساختار و نحوه استفاده
 
-## Project layout
+## ساختار پروژه
+
+ساختار کلی پروژه به صورت زیر است:
 
 ```
 gossip protocol/
 ├── docs/
-│   ├── PROTOCOL_DESIGN.md   # Protocol design (node state, messages, bootstrap, dedup)
-│   └── STAGE1_STRUCTURE.md  # This file
+│   ├── PROTOCOL_DESIGN.md
+│   │   توضیح طراحی پروتکل (وضعیت نود، پیام‌ها، bootstrap و جلوگیری از تکرار)
+│   │
+│   └── STAGE1_STRUCTURE.md
+│       همین فایل (ساختار پروژه و نحوه اجرا)
+│
 ├── internal/
-│   ├── logger/              # Structured JSON-line logging for analysis
+│   ├── logger/
+│   │   ثبت لاگ‌ها به صورت JSON-line برای تحلیل
 │   │   └── logger.go
+│   │
 │   ├── protocol/
-│   │   ├── types.go         # MsgType, Config, PeerEntry
-│   │   ├── message.go       # Envelope + payload structs
-│   │   └── node_state.go    # NodeState, peer list, seen-set
+│   │   تعریف ساختار پروتکل و وضعیت نود
+│   │   ├── types.go
+│   │   │   تعریف نوع پیام‌ها، تنظیمات و ساختار PeerEntry
+│   │   │
+│   │   ├── message.go
+│   │   │   تعریف Envelope پیام‌ها و payloadها
+│   │   │
+│   │   └── node_state.go
+│   │       نگهداری وضعیت نود، لیست همسایه‌ها و seen-set
+│   │
 │   └── transport/
-│       └── udp.go           # UDP send/receive JSON envelopes
+│       └── udp.go
+│           ارسال و دریافت پیام‌ها روی UDP به صورت JSON
+│
 ├── cmd/
-│   ├── node/                # Single node process (UDP, stdin for gossip)
+│   ├── node/
+│   │   اجرای یک نود Gossip
 │   │   └── main.go
-│   └── simulate/            # Automated runs (N nodes, multiple seeds)
+│   │
+│   └── simulate/
+│       اجرای آزمایش‌های خودکار با چند نود
 │       └── main.go
+│
 ├── go.mod
-├── node                     # Built binary
-└── simulate                 # Built binary
+│
+├── node
+│   فایل باینری ساخته شده برای اجرای نود
+│
+└── simulate
+    فایل باینری ساخته شده برای اجرای شبیه‌سازی
 ```
 
-## Running a node
+---
+
+## اجرای یک نود
+
+برای اجرای یک نود می‌توان از دستور زیر استفاده کرد:
 
 ```bash
 ./node -port 8000 -bootstrap 127.0.0.1:9000 -fanout 3 -ttl 8 -peer-limit 20 \
   -ping-interval 2s -peer-timeout 6s -seed 42
 ```
 
-Type `gossip <topic> <data>` on stdin to publish a new gossip (e.g. `gossip news hello`).
+پارامتر port پورت UDP نود را مشخص می‌کند.
 
-Optional: `-logfile <path>` writes structured JSON-line logs for analysis.
+پارامتر bootstrap آدرس نودی است که برای ورود اولیه به شبکه استفاده می‌شود. اگر این پارامتر داده نشود، نود به عنوان bootstrap اجرا می‌شود.
 
-## Running simulations
+پارامتر fanout تعداد همسایه‌هایی است که هر پیام گاسپ به آن‌ها ارسال می‌شود.
+
+پارامتر ttl حداکثر تعداد hop برای هر پیام گاسپ است.
+
+پارامتر peer-limit حداکثر تعداد همسایه‌هایی است که نود نگه می‌دارد.
+
+پارامتر ping-interval فاصله زمانی ارسال pingها است.
+
+پارامتر peer-timeout زمانی است که بعد از آن همسایه بدون پاسخ حذف می‌شود.
+
+پارامتر seed برای تولید اعداد تصادفی قابل تکرار استفاده می‌شود.
+
+برای ارسال یک پیام گاسپ باید دستور زیر در stdin وارد شود:
+
+```
+gossip <topic> <data>
+```
+
+مثال:
+
+```
+gossip news hello
+```
+
+---
+
+## توضیح پارامتر seed و seeds
+
+### در برنامه node: پرچم `-seed`
+
+- **مقدار:** یک عدد صحیح (مثلاً `0` یا `42`). پیش‌فرض: `0`.
+- **کاربرد:** این مقدار به عنوان **seed** به مولد اعداد تصادفی (RNG) داده می‌شود: `rand.New(rand.NewSource(seed))`. همهٔ انتخاب‌های «تصادفی» در این نود با همین RNG انجام می‌شود.
+- **کجا استفاده می‌شود:**
+  - **انتخاب همسایه برای ارسال گاسپ (fanout):** وقتی نود می‌خواهد یک پیام گاسپ را به `fanout` همسایه بفرستد، به‌جای انتخاب واقعاً تصادفی از لیست همسایه‌ها از `rng.Perm()` استفاده می‌کند. با seed ثابت، هر بار همان همسایه‌ها (با همان ترتیب) انتخاب می‌شوند.
+  - **افزودن/حذف همسایه (eviction):** وقتی لیست همسایه‌ها پر است و همسایهٔ جدید اضافه می‌شود، انتخاب اینکه کدام همسایهٔ قدیمی حذف شود (در صورت نیاز به tie-break) با همین RNG انجام می‌شود.
+- **نتیجه:** با **seed یکسان** و شرایط یکسان (همان ترتیب پیام‌ها)، رفتار نود **تکرارپذیر** است؛ با seed متفاوت، الگوی انتخاب همسایه‌ها عوض می‌شود.
+
+### در برنامه simulate: پرچم `-seeds`
+
+- **مقدار:** رشته‌ای از اعداد جدا شده با کاما، مثلاً `1,2,3,4,5`. اگر خالی باشد، شبیه‌ساز به‌طور پیش‌فرض برای runهای ۰، ۱، ۲، … به‌ترتیب از seedهای `1, 2, 3, ..., runs` استفاده می‌کند.
+- **کاربرد:** برای هر **run** (هر بار اجرای آزمایش با N نود)، شبیه‌ساز همهٔ نودها را با **همان seed** آن run اجرا می‌کند. مثلاً با `-runs 5 -seeds 1,2,3,4,5`:
+  - run 0: همهٔ نودها با `-seed 1`
+  - run 1: همهٔ نودها با `-seed 2`
+  - …
+  - run 4: همهٔ نودها با `-seed 5`
+- **چرا مهم است:** هر run با یک seed متفاوت، الگوی متفاوتی از انتخاب همسایه (و در نتیجه مسیر پخش گاسپ) دارد. با چند run و seedهای مختلف، می‌توان **میانگین** و **انحراف معیار** زمان همگرایی و overhead را به‌دست آورد و رفتار پروتکل را تحت تنوع تصادفی ارزیابی کرد. اگر از `-seeds` استفاده نکنید، همان مقادیر پیش‌فرض ۱، ۲، … برای هر run به‌کار می‌رود.
+
+---
+
+## ذخیره لاگ در فایل
+
+در صورت نیاز می‌توان لاگ‌ها را در فایل ذخیره کرد:
+
+```
+-logfile <path>
+```
+
+مثال:
+
+```
+-logfile node.log
+```
+
+لاگ‌ها به صورت JSON-line ذخیره می‌شوند و برای تحلیل یا شبیه‌سازی استفاده می‌شوند.
+
+---
+
+## اجرای شبیه‌سازی
+
+برای اجرای شبیه‌سازی از دستور زیر استفاده می‌شود:
 
 ```bash
 ./simulate -nodes 10 -runs 5 -seeds 1,2,3,4,5 -logdir sim_logs -node-bin ./node
 ```
 
-Supported sizes: N ∈ {10, 20, 50} (any N is valid). Logs are parsed to compute:
+پارامتر nodes تعداد نودها را مشخص می‌کند.
 
-- **Convergence time**: ms from gossip origin until 95% of nodes have received it.
-- **Message overhead**: total GOSSIP message_sent count for that run.
+پارامتر runs تعداد دفعات اجرای آزمایش را مشخص می‌کند.
 
-Summary prints average and standard deviation across runs.
+پارامتر seeds مجموعه seedهای مورد استفاده در اجراها را مشخص می‌کند.
 
-## Structured log events (for parsing)
+پارامتر logdir پوشه‌ای است که لاگ‌ها در آن ذخیره می‌شوند.
 
-- `startup`, `peer_add`, `peer_remove`, `bootstrap_peers`
-- `gossip_receive`, `gossip_forward`, `gossip_origin`
-- `duplicate`, `message_sent`
-- `ping_sent`, `pong_received`, `ping_received`, `pong_sent`
-- `invalid_message`
+پارامتر node-bin مسیر فایل باینری node را مشخص می‌کند.
 
-Each line is JSON: `{"t_ms":..., "node":"...", "event":"...", "payload":{...}}`.
+هر مقدار N قابل استفاده است، ولی اندازه‌های معمول شامل 10، 20 و 50 نود هستند.
+
+---
+
+## معیارهای اندازه‌گیری
+
+بعد از اجرای شبیه‌سازی، لاگ‌ها خوانده می‌شوند و دو معیار محاسبه می‌شود.
+
+زمان همگرایی
+
+مدت زمانی که طول می‌کشد تا ۹۵ درصد نودها پیام گاسپ را دریافت کنند. این زمان بر حسب میلی‌ثانیه محاسبه می‌شود.
+
+تعداد پیام‌ها
+
+تعداد کل پیام‌های GOSSIP که در طول یک run ارسال شده‌اند.
+
+در پایان، میانگین و انحراف معیار این مقادیر برای همه runها نمایش داده می‌شود.
+
+---
+
+## رویدادهای لاگ
+
+لاگ‌ها به صورت JSON-line ذخیره می‌شوند، یعنی هر خط یک شیء JSON جداگانه است.
+
+نمونه:
+
+```
+{"t_ms":12345,"node":"node1","event":"gossip_receive","payload":{}}
+```
+
+رویدادهای اصلی که در لاگ ثبت می‌شوند:
+
+- startup
+- peer_add
+- peer_remove
+- bootstrap_peers
+
+- gossip_receive
+- gossip_forward
+- gossip_origin
+
+- duplicate
+- message_sent
+
+- ping_sent
+- pong_received
+- ping_received
+- pong_sent
+
+- invalid_message
+
+این رویدادها توسط برنامه simulate خوانده می‌شوند تا معیارهای عملکرد شبکه محاسبه شود.
